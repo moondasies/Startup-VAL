@@ -5,6 +5,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import EmptyState from "@/components/chat/EmptyState";
 import PromptInput from "@/components/chat/PromptInput";
+import ProviderConfig from "@/components/chat/ProviderConfig";
 import UserMessage from "@/components/chat/UserMessage";
 import AssistantMessage from "@/components/chat/AssistantMessage";
 import {
@@ -17,12 +18,19 @@ import {
   type ChatMessage,
   type Conversation,
 } from "@/lib/conversations";
+import {
+  loadApiKey,
+  loadProvider,
+  saveApiKey,
+  saveProvider,
+  type Provider,
+} from "@/lib/providerConfig";
 
-async function fetchEvaluation(idea: string): Promise<string> {
+async function fetchEvaluation(provider: Provider, apiKey: string, idea: string): Promise<string> {
   const res = await fetch("/api/evaluate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify({ provider, apiKey, idea }),
   });
 
   const data = await res.json();
@@ -51,6 +59,9 @@ export default function Home() {
   const [isSending, setIsSending] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [provider, setProvider] = useState<Provider | "">("");
+  const [apiKey, setApiKey] = useState("");
+  const [configError, setConfigError] = useState<string | null>(null);
   const hasLoaded = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +69,8 @@ export default function Home() {
 
   useEffect(() => {
     setConversations(loadConversations());
+    setProvider(loadProvider());
+    setApiKey(loadApiKey());
     hasLoaded.current = true;
   }, []);
 
@@ -65,6 +78,16 @@ export default function Home() {
     if (!hasLoaded.current) return;
     persistConversations(conversations);
   }, [conversations]);
+
+  useEffect(() => {
+    if (!hasLoaded.current) return;
+    saveProvider(provider);
+  }, [provider]);
+
+  useEffect(() => {
+    if (!hasLoaded.current) return;
+    saveApiKey(apiKey);
+  }, [apiKey]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -84,7 +107,19 @@ export default function Home() {
     );
   }
 
-  async function handleSubmit(idea: string) {
+  async function handleSubmit(idea: string): Promise<boolean> {
+    if (!provider) {
+      setConfigError("Select an AI provider.");
+      return false;
+    }
+
+    if (!apiKey.trim()) {
+      setConfigError("Please enter your API key.");
+      return false;
+    }
+
+    setConfigError(null);
+
     const userMsg = createMessage("user", idea, "done");
     const assistantMsg = createMessage("assistant", "", "loading");
 
@@ -107,7 +142,7 @@ export default function Home() {
 
     setIsSending(true);
     try {
-      const evaluation = await fetchEvaluation(idea);
+      const evaluation = await fetchEvaluation(provider, apiKey, idea);
       updateMessage(conversationId, assistantMsg.id, { status: "done", content: evaluation });
     } catch (err) {
       updateMessage(conversationId, assistantMsg.id, {
@@ -117,6 +152,8 @@ export default function Home() {
     } finally {
       setIsSending(false);
     }
+
+    return true;
   }
 
   async function regenerateMessage(conversationId: string, assistantMessageId: string) {
@@ -126,11 +163,22 @@ export default function Home() {
     const userMsg = findPrecedingUserMessage(conversation, assistantMessageId);
     if (!userMsg) return;
 
+    if (!provider) {
+      setConfigError("Select an AI provider.");
+      return;
+    }
+
+    if (!apiKey.trim()) {
+      setConfigError("Please enter your API key.");
+      return;
+    }
+
+    setConfigError(null);
     setIsSending(true);
     updateMessage(conversationId, assistantMessageId, { status: "loading", content: "" });
 
     try {
-      const evaluation = await fetchEvaluation(userMsg.content);
+      const evaluation = await fetchEvaluation(provider, apiKey, userMsg.content);
       updateMessage(conversationId, assistantMessageId, { status: "done", content: evaluation });
     } catch (err) {
       updateMessage(conversationId, assistantMessageId, {
@@ -248,7 +296,20 @@ export default function Home() {
         </div>
 
         <div className="border-t border-border-subtle px-4 py-3">
-          <div className="mx-auto w-full max-w-3xl">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+            <ProviderConfig
+              provider={provider}
+              apiKey={apiKey}
+              onProviderChange={(p) => {
+                setProvider(p);
+                setConfigError(null);
+              }}
+              onApiKeyChange={(k) => {
+                setApiKey(k);
+                setConfigError(null);
+              }}
+              error={configError}
+            />
             <PromptInput onSubmit={handleSubmit} isLoading={isSending} />
           </div>
         </div>

@@ -1,5 +1,5 @@
 interface EmptyStateProps {
-  onSubmit: (idea: string) => void;
+  onSubmit: (idea: string) => boolean | void | Promise<boolean | void>;
   isLoading: boolean;
 }
 

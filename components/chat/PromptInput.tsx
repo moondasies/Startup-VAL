@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Paperclip } from "lucide-react";
 
 interface PromptInputProps {
-  onSubmit: (idea: string) => void;
+  onSubmit: (idea: string) => boolean | void | Promise<boolean | void>;
   isLoading: boolean;
 }
 
@@ -21,11 +21,11 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
   }, [value]);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const trimmed = value.trim();
     if (!trimmed || isLoading) return;
-    onSubmit(trimmed);
-    setValue("");
+    const result = await onSubmit(trimmed);
+    if (result !== false) setValue("");
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
