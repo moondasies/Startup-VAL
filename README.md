@@ -3,7 +3,7 @@
 **Evaluate your startup idea like a VC — powered by AI, delivered as a chat.**
 
 Startup-VAL is a ChatGPT-style AI workspace where founders describe an idea and get back an investor-grade evaluation: overall score, recommendation, scorecard breakdown, biggest risks, and a concrete roadmap — all rendered as clean, structured cards inside a real multi-turn conversation.
-
+Live link : https://startup-idea-validator-liart.vercel.app/
 ## Features
 
 - **Chat-native UX** — a permanently docked composer, growing conversation history, and inline "thinking" states, modeled after ChatGPT / Claude / Codex.
